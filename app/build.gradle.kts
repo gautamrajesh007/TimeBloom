@@ -54,10 +54,16 @@ dependencies {
     implementation(libs.androidx.compose.ui.tooling.preview)
     implementation(libs.androidx.compose.material3)
     implementation(libs.androidx.navigation.compose)
+    implementation(libs.androidx.compose.material.icons.extended)
 
     // Room
     implementation(libs.androidx.room.runtime)
     implementation(libs.androidx.room.ktx)
+    implementation(libs.androidx.navigation.safe.args.generator)
+    implementation(libs.androidx.datastore.core)
+    implementation(libs.androidx.datastore.preferences.core)
+    implementation(libs.androidx.material3)
+    implementation(libs.androidx.compose.runtime)
     ksp(libs.androidx.room.compiler)
 
     // DataStore
@@ -71,7 +77,6 @@ dependencies {
 
     // Gson
     implementation(libs.gson)
-
     // Testing
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
