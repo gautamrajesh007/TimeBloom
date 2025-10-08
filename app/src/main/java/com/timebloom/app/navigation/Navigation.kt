@@ -6,7 +6,11 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
+import com.timebloom.app.ui.screens.createedit.CreateEditPlantScreen
+import com.timebloom.app.ui.screens.garden.GardenScreen
 import com.timebloom.app.ui.screens.plantdetail.PlantDetailScreen
+import com.timebloom.app.ui.screens.settings.SettingsScreen
+import com.timebloom.app.ui.screens.statistics.StatisticsScreen
 
 sealed class Screen(val route: String) {
     object Garden : Screen("garden")

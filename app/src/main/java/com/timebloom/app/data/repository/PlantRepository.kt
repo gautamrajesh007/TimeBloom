@@ -5,9 +5,9 @@ import com.timebloom.app.data.local.dao.CheckInDao
 import com.timebloom.app.data.local.dao.PlantDao
 import com.timebloom.app.data.local.entity.Achievement
 import com.timebloom.app.data.local.entity.CheckIn
-import com.timebloom.app.data.local.entity.GrowthStage
 import com.timebloom.app.data.local.entity.Mood
 import com.timebloom.app.data.local.entity.Plant
+import com.timebloom.app.utils.PlantGrowthCalculator
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 
@@ -36,28 +36,36 @@ class PlantRepository(
         val checkIn = CheckIn(plantId = plantId, note = note, mood = mood)
         checkInDao.insertCheckIn(checkIn)
 
-        // Update plant
+        // Calculate rain drops based on streak
+        val rainDropsEarned = PlantGrowthCalculator.getRainDropsForCheckIn(plant.currentStreakCount)
+
+        // Update plant using PlantGrowthCalculator
         val updatedPlant = plant.copy(
             currentStreakCount = plant.currentStreakCount + 1,
             longestStreakCount = maxOf(plant.longestStreakCount, plant.currentStreakCount + 1),
             totalCheckIns = plant.totalCheckIns + 1,
             lastCheckIn = System.currentTimeMillis(),
-            growthStage = calculateNextGrowthStage(plant),
-            rainDrops = plant.rainDrops + 1
+            growthStage = PlantGrowthCalculator.calculateGrowthStage(
+                plant.copy(totalCheckIns = plant.totalCheckIns + 1)
+            ),
+            rainDrops = plant.rainDrops + rainDropsEarned,
+            nextCheckInDue = PlantGrowthCalculator.calculateNextCheckInDue(plant)
         )
         plantDao.updatePlant(updatedPlant)
     }
 
-    private fun calculateNextGrowthStage(plant: Plant): GrowthStage {
-        val stages = GrowthStage.values().filter { it != GrowthStage.WITHERING }
-        val growthPoints = plant.totalCheckIns * plant.difficulty.growthRate
+    suspend fun revivePlant(plantId: Long) {
+        val plant = plantDao.getPlantById(plantId).first() ?: return
+        val reviveCost = PlantGrowthCalculator.calculateReviveCost(plant)
 
-        return when {
-            growthPoints < 3 -> GrowthStage.SEED
-            growthPoints < 7 -> GrowthStage.SPROUT
-            growthPoints < 15 -> GrowthStage.PLANT
-            growthPoints < 30 -> GrowthStage.FLOWER
-            else -> GrowthStage.FRUIT
+        if (plant.rainDrops >= reviveCost) {
+            val updatedPlant = plant.copy(
+                rainDrops = plant.rainDrops - reviveCost,
+                lastCheckIn = System.currentTimeMillis(),
+                currentStreakCount = 1,
+                growthStage = PlantGrowthCalculator.calculateGrowthStage(plant)
+            )
+            plantDao.updatePlant(updatedPlant)
         }
     }
 

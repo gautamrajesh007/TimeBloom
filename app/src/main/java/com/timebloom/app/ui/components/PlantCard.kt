@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Card
@@ -31,9 +32,10 @@ import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
-import com.timebloom.app.data.local.entity.Plant
 import androidx.core.graphics.toColorInt
+import com.timebloom.app.data.local.entity.GrowthStage
+import com.timebloom.app.data.local.entity.Plant
+import com.timebloom.app.utils.PlantGrowthCalculator
 
 @Composable
 fun PlantCard(
@@ -47,6 +49,10 @@ fun PlantCard(
         targetValue = if (isPressed) 0.95f else 1f,
         animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy)
     )
+
+    // Calculate if plant is withering
+    val isWithering = PlantGrowthCalculator.shouldBeWithering(plant)
+    val displayStage = if (isWithering) GrowthStage.WITHERING else plant.growthStage
 
     Card(
         modifier = modifier
@@ -62,12 +68,15 @@ fun PlantCard(
                 .padding(16.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            // Plant emoji
-            Text(
-                text = plant.growthStage.emoji,
-                fontSize = 48.sp,
-                modifier = Modifier.padding(vertical = 8.dp)
+            // Use PlantVisual component instead of emoji
+            PlantVisual(
+                growthStage = displayStage,
+                plantColor = plant.color,
+                isHealthy = !isWithering,
+                modifier = Modifier.size(100.dp)
             )
+
+            Spacer(modifier = Modifier.height(8.dp))
 
             // Plant name
             Text(
@@ -78,6 +87,15 @@ fun PlantCard(
             )
 
             Spacer(modifier = Modifier.height(4.dp))
+
+            // Growth stage
+            Text(
+                text = displayStage.displayName,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+
+            Spacer(modifier = Modifier.height(8.dp))
 
             // Streak info
             Row(
@@ -98,13 +116,18 @@ fun PlantCard(
 
             Spacer(modifier = Modifier.height(8.dp))
 
-            // Progress bar
+            // Health/Progress bar
+            val healthPercentage = PlantGrowthCalculator.calculateHealthPercentage(plant)
             LinearProgressIndicator(
-            progress = { (plant.totalCheckIns % 10) / 10f },
+            progress = { healthPercentage / 100f },
             modifier = Modifier
-                .fillMaxWidth()
-                .height(6.dp),
-            color = Color(plant.color.toColorInt()),
+                                .fillMaxWidth()
+                                .height(6.dp),
+            color = if (healthPercentage > 50) {
+                                Color(plant.color.toColorInt())
+                            } else {
+                                MaterialTheme.colorScheme.error
+                            },
             trackColor = Color.LightGray.copy(alpha = 0.3f),
             strokeCap = ProgressIndicatorDefaults.LinearStrokeCap,
             )

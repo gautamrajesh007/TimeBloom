@@ -40,6 +40,10 @@ android {
     }
 }
 
+configurations.all {
+    exclude(group = "xmlpull", module = "xmlpull")
+}
+
 dependencies {
     // Core Android
     implementation(libs.androidx.core.ktx)

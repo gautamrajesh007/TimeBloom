@@ -3,7 +3,7 @@ package com.timebloom.app.data.local.entity
 import androidx.room.Entity
 import androidx.room.PrimaryKey
 
-@Entity(tableName = "Plants")
+@Entity(tableName = "plants")
 data class Plant(
     @PrimaryKey(autoGenerate = true)
     val id: Long = 0,
@@ -45,4 +45,3 @@ enum class GrowthStage(val displayName: String, val emoji: String) {
     FRUIT("Fruit", "🍎"),
     WITHERING("Withering", "🥀")
 }
-
