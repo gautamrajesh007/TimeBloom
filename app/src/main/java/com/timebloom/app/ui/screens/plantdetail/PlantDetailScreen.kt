@@ -1,5 +1,6 @@
 package com.timebloom.app.ui.screens.plantdetail
 
+import android.widget.Toast
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -30,6 +31,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -78,6 +80,21 @@ fun PlantDetailScreen(
     val checkIns by viewModel.checkIns.collectAsState()
     var showCheckInDialog by remember { mutableStateOf(false) }
     var showDeleteDialog by remember { mutableStateOf(false) }
+
+    val checkInState by viewModel.checkInState.collectAsState()
+    LaunchedEffect(checkInState) {
+        when (val state = checkInState) {
+            is CheckInState.Success -> {
+                Toast.makeText(context, "Plant checked in successfully!", Toast.LENGTH_SHORT).show()
+                viewModel.resetCheckInState()
+            }
+            is CheckInState.Error -> {
+                Toast.makeText(context, state.message, Toast.LENGTH_LONG).show()
+                viewModel.resetCheckInState()
+            }
+            else -> {}
+        }
+    }
 
     Scaffold(
         topBar = {

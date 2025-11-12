@@ -13,14 +13,13 @@ import com.timebloom.app.data.repository.PlantRepository
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 
-// ... (ExportState and CheckInState sealed classes as defined above)
-// Add CheckInState here if you put it in the same file
 sealed class CheckInState {
     object Idle : CheckInState()
     object Loading : CheckInState()
     object Success : CheckInState()
     data class Error(val message: String) : CheckInState()
 }
+
 sealed class ExportState {
     object Idle : ExportState()
     object Loading : ExportState()
