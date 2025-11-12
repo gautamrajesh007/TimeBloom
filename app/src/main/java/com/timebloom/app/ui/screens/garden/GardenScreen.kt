@@ -51,6 +51,42 @@ fun GardenScreen(
     val plants by viewModel.plants.collectAsState()
     var showCheckInDialog by remember { mutableStateOf<Long?>(null) }
 
+    val exportState by viewModel.exportState.collectAsState()
+    LaunchedEffect(exportState) {
+        when (exportState) {
+            is ExportState.Success -> {
+                Toast.makeText(context, "Operation successful!", Toast.LENGTH_SHORT).show()
+                viewModel.resetExportState()
+            }
+            is ExportState.Error -> {
+                Toast.makeText(context, (exportState as ExportState.Error).message, Toast.LENGTH_LONG).show()
+                viewModel.resetExportState()
+            }
+            is ExportState.Loading -> {
+                Toast.makeText(context, "Processing...", Toast.LENGTH_SHORT).show()
+            }
+            else -> {}
+        }
+    }
+
+    val checkInState by viewModel.checkInState.collectAsState()
+    LaunchedEffect(checkInState) {
+        when (checkInState) {
+            is CheckInState.Success -> {
+                Toast.makeText(context, "Plant checked in successfully!", Toast.LENGTH_SHORT).show()
+                viewModel.resetCheckInState()
+            }
+            is CheckInState.Error -> {
+                Toast.makeText(context, (checkInState as CheckInState.Error).message, Toast.LENGTH_LONG).show()
+                viewModel.resetCheckInState()
+            }
+            is CheckInState.Loading -> {
+                Toast.makeText(context, "Processing...", Toast.LENGTH_SHORT).show()
+            }
+            else -> {} // CheckInState.Idle, do nothing
+        }
+    }
+
     Scaffold(
         topBar = {
             TopAppBar(
@@ -70,7 +106,8 @@ fun GardenScreen(
                 Icon(Icons.Default.Add, "Add Plant")
             }
         }
-    ) { padding ->
+    ) {
+        padding ->
         if (plants.isEmpty()) {
             Box(
                 modifier = Modifier
@@ -106,6 +143,7 @@ fun GardenScreen(
                     .padding(padding)
             ) {
                 items(plants) { plant ->
+                    val isCheckInLoading = checkInState is CheckInState.Loading
                     SwipeablePlantCard(
                         plant = plant,
                         onClick = { onPlantClick(plant.id) },
@@ -119,24 +157,24 @@ fun GardenScreen(
         }
     }
 
-    val exportState by viewModel.exportState.collectAsState()
-
-    LaunchedEffect(exportState) {
-        when (exportState) {
-            is ExportState.Success -> {
-                Toast.makeText(context, "Operation successful!", Toast.LENGTH_SHORT).show()
-                viewModel.resetExportState()
-            }
-            is ExportState.Error -> {
-                Toast.makeText(context, (exportState as ExportState.Error).message, Toast.LENGTH_LONG).show()
-                viewModel.resetExportState()
-            }
-            is ExportState.Loading -> {
-                 Toast.makeText(context, "Processing...", Toast.LENGTH_SHORT).show()
-            }
-            else -> {}
-        }
-    }
+//    val exportState by viewModel.exportState.collectAsState()
+//
+//    LaunchedEffect(exportState) {
+//        when (exportState) {
+//            is ExportState.Success -> {
+//                Toast.makeText(context, "Operation successful!", Toast.LENGTH_SHORT).show()
+//                viewModel.resetExportState()
+//            }
+//            is ExportState.Error -> {
+//                Toast.makeText(context, (exportState as ExportState.Error).message, Toast.LENGTH_LONG).show()
+//                viewModel.resetExportState()
+//            }
+//            is ExportState.Loading -> {
+//                 Toast.makeText(context, "Processing...", Toast.LENGTH_SHORT).show()
+//            }
+//            else -> {}
+//        }
+//    }
 
     showCheckInDialog?.let { plantId ->
         val plant = plants.find { it.id == plantId }
@@ -147,7 +185,7 @@ fun GardenScreen(
                 onConfirm = { note, mood ->
                     viewModel.checkInPlant(plantId, note, mood)
                     showCheckInDialog = null
-                }
+                },
             )
         }
     }

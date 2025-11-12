@@ -33,11 +33,11 @@ sealed class Screen(val route: String) {
 }
 
 @Composable
-fun NavigationGraph() { // Keeping the original function name
+fun NavigationGraph() {
     val navController = rememberNavController()
     val context = LocalContext.current
 
-    // --- Start of added/modified logic from the fix ---
+
     val database = remember { AppDatabase.getDatabase(context) }
     val repository = remember {
         PlantRepository(
@@ -47,7 +47,6 @@ fun NavigationGraph() { // Keeping the original function name
         )
     }
 
-    // Create GardenViewModel at navigation level to share it
     val gardenViewModel: GardenViewModel = viewModel(
         factory = object : androidx.lifecycle.ViewModelProvider.Factory {
             override fun <T : androidx.lifecycle.ViewModel> create(modelClass: Class<T>): T {
@@ -56,7 +55,6 @@ fun NavigationGraph() { // Keeping the original function name
             }
         }
     )
-    // --- End of added/modified logic from the fix ---
 
     NavHost(navController = navController, startDestination = Screen.Garden.route) {
         composable(Screen.Garden.route) {
@@ -79,13 +77,21 @@ fun NavigationGraph() { // Keeping the original function name
 
         composable(
             route = Screen.PlantDetail.route,
-            arguments = listOf(navArgument("plantId") { type = NavType.LongType })
-        ) { backStackEntry ->
-            val plantId = backStackEntry.arguments?.getLong("plantId") ?: return@composable
+            arguments = listOf(navArgument("plantId") {
+                type = NavType.LongType
+                defaultValue = -1L
+            })
+        ) {
+            backStackEntry ->
+            val plantId = backStackEntry.arguments?.getLong("plantId") ?.takeIf { it != -1L }
             PlantDetailScreen(
-                plantId = plantId,
+                plantId = plantId ?: 0L,
                 onNavigateBack = { navController.popBackStack() },
-                onEditClick = { navController.navigate(Screen.CreateEditPlant.createRoute(plantId)) }
+                onEditClick = {
+                    plantId?.let { id ->
+                        navController.navigate(Screen.CreateEditPlant.createRoute(id))
+                    }
+                }
             )
         }
 
@@ -93,10 +99,12 @@ fun NavigationGraph() { // Keeping the original function name
             route = Screen.CreateEditPlant.route,
             arguments = listOf(navArgument("plantId") {
                 type = NavType.LongType
-                nullable = true
-                defaultValue = null
+                // FIX: Remove nullable = true if you're using defaultValue = null
+                // Or, more robustly, set a non-null default and check for it
+                defaultValue = -1L // Changed from null to a non-null default
             })
         ) { backStackEntry ->
+            // FIX: Retrieve and check for the default value
             val plantId = backStackEntry.arguments?.getLong("plantId")?.takeIf { it != -1L }
             CreateEditPlantScreen(
                 plantId = plantId,

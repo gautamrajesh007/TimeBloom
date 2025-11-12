@@ -10,11 +10,10 @@ import com.timebloom.app.data.local.entity.Mood
 import com.timebloom.app.data.local.entity.Plant
 import com.timebloom.app.utils.PlantGrowthCalculator
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.first
 
 class PlantRepository(
     private val plantDao: PlantDao,
-    private val checkInDao: CheckInDao, // This is already injected
+    private val checkInDao: CheckInDao,
     private val achievementDao: AchievementDao
 ) {
     val allActivePlants: Flow<List<Plant>> = plantDao.getAllActivePlants()
