@@ -14,6 +14,9 @@ interface CheckInDao {
     @Query("SELECT * FROM check_ins WHERE timestamp >= :startTime AND timestamp <= :endTime")
     fun getCheckInsBetween(startTime: Long, endTime: Long): Flow<List<CheckIn>>
 
+    @Query("SELECT * FROM check_ins ORDER BY timestamp DESC")
+    suspend fun getAllCheckInsOnce(): List<CheckIn>
+
     @Insert
     suspend fun insertCheckIn(checkIn: CheckIn): Long
 

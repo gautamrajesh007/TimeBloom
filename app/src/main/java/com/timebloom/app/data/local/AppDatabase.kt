@@ -4,12 +4,12 @@ import android.content.Context
 import androidx.room.Database
 import androidx.room.Room
 import androidx.room.RoomDatabase
-import com.timebloom.app.data.local.entity.Plant
-import com.timebloom.app.data.local.entity.CheckIn
-import com.timebloom.app.data.local.entity.Achievement
 import com.timebloom.app.data.local.dao.AchievementDao
 import com.timebloom.app.data.local.dao.CheckInDao
 import com.timebloom.app.data.local.dao.PlantDao
+import com.timebloom.app.data.local.entity.Achievement
+import com.timebloom.app.data.local.entity.CheckIn
+import com.timebloom.app.data.local.entity.Plant
 
 @Database(
     entities = [Plant::class, CheckIn::class, Achievement::class],

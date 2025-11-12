@@ -3,6 +3,10 @@ package com.timebloom.app.utils
 import com.timebloom.app.data.local.entity.Frequency
 import com.timebloom.app.data.local.entity.GrowthStage
 import com.timebloom.app.data.local.entity.Plant
+import java.time.Instant
+import java.time.LocalDate
+import java.time.ZoneId
+import java.time.temporal.ChronoUnit
 import java.util.concurrent.TimeUnit
 
 object PlantGrowthCalculator {
@@ -24,18 +28,23 @@ object PlantGrowthCalculator {
 
     /**
      * Check if plant should be withering based on missed check-ins
+     * Now timezone-aware
      */
     fun shouldBeWithering(plant: Plant): Boolean {
         val lastCheckIn = plant.lastCheckIn ?: return false
-        val daysSinceLastCheckIn = TimeUnit.MILLISECONDS.toDays(
-            System.currentTimeMillis() - lastCheckIn
-        )
+
+        val lastCheckInDate = Instant.ofEpochMilli(lastCheckIn)
+            .atZone(ZoneId.systemDefault())
+            .toLocalDate()
+
+        val today = LocalDate.now()
+        val daysSinceLastCheckIn = ChronoUnit.DAYS.between(lastCheckInDate, today)
 
         val gracePeriod = when (plant.frequency) {
-            Frequency.DAILY -> 2
-            Frequency.TWICE_WEEKLY -> 4
-            Frequency.THREE_TIMES_WEEKLY -> 3
-            Frequency.WEEKLY -> 8
+            Frequency.DAILY -> 2L
+            Frequency.TWICE_WEEKLY -> 4L
+            Frequency.THREE_TIMES_WEEKLY -> 3L
+            Frequency.WEEKLY -> 8L
         }
 
         return daysSinceLastCheckIn > gracePeriod
@@ -45,9 +54,13 @@ object PlantGrowthCalculator {
      * Calculate how many rain drops are needed to revive a withering plant
      */
     fun calculateReviveCost(plant: Plant): Int {
-        val daysMissed = plant.lastCheckIn?.let {
-            TimeUnit.MILLISECONDS.toDays(System.currentTimeMillis() - it).toInt()
-        } ?: 0
+        val lastCheckIn = plant.lastCheckIn ?: return 1
+
+        val lastCheckInDate = Instant.ofEpochMilli(lastCheckIn)
+            .atZone(ZoneId.systemDefault())
+            .toLocalDate()
+
+        val daysMissed = ChronoUnit.DAYS.between(lastCheckInDate, LocalDate.now()).toInt()
 
         return when {
             daysMissed <= 3 -> 1
@@ -66,14 +79,16 @@ object PlantGrowthCalculator {
     }
 
     /**
-     * Calculate health percentage (0-100)
+     * Calculate health percentage (0-100) - Timezone aware
      */
     fun calculateHealthPercentage(plant: Plant): Float {
         if (plant.lastCheckIn == null) return 100f
 
-        val daysSinceLastCheckIn = TimeUnit.MILLISECONDS.toDays(
-            System.currentTimeMillis() - plant.lastCheckIn
-        ).toFloat()
+        val lastCheckInDate = Instant.ofEpochMilli(plant.lastCheckIn)
+            .atZone(ZoneId.systemDefault())
+            .toLocalDate()
+
+        val daysSinceLastCheckIn = ChronoUnit.DAYS.between(lastCheckInDate, LocalDate.now()).toFloat()
 
         val maxDaysForFullHealth = when (plant.frequency) {
             Frequency.DAILY -> 1f
@@ -81,6 +96,9 @@ object PlantGrowthCalculator {
             Frequency.THREE_TIMES_WEEKLY -> 2.5f
             Frequency.WEEKLY -> 7f
         }
+
+        // Ensure we don't have negative health
+        if (daysSinceLastCheckIn < 0) return 100f
 
         val healthPercentage = ((maxDaysForFullHealth - daysSinceLastCheckIn) / maxDaysForFullHealth * 100)
             .coerceIn(0f, 100f)
@@ -105,7 +123,7 @@ object PlantGrowthCalculator {
      */
     fun calculateGrowthProgress(plant: Plant): Float {
         val growthPoints = plant.totalCheckIns * plant.difficulty.growthRate
-        val maxPoints = 30f // Points needed to reach FRUIT stage
+        val maxPoints = 30f
         return (growthPoints / maxPoints).coerceIn(0f, 1f)
     }
 
@@ -145,5 +163,20 @@ object PlantGrowthCalculator {
             Frequency.THREE_TIMES_WEEKLY -> checkInsNeeded * 2
             Frequency.WEEKLY -> checkInsNeeded * 7
         }
+    }
+
+    /**
+     * Check if user has already checked in today (prevents duplicates)
+     */
+    fun hasCheckedInToday(plant: Plant): Boolean {
+        val lastCheckIn = plant.lastCheckIn ?: return false
+
+        val lastCheckInDate = Instant.ofEpochMilli(lastCheckIn)
+            .atZone(ZoneId.systemDefault())
+            .toLocalDate()
+
+        val today = LocalDate.now()
+
+        return lastCheckInDate.isEqual(today)
     }
 }

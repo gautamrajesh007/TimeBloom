@@ -1,5 +1,6 @@
 package com.timebloom.app.ui.screens.garden
 
+import android.widget.Toast
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -24,6 +25,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -33,38 +35,19 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.viewmodel.compose.viewModel
-import com.timebloom.app.data.local.AppDatabase
-import com.timebloom.app.data.repository.PlantRepository
 import com.timebloom.app.ui.components.CheckInDialog
-import com.timebloom.app.ui.components.PlantCard
+import com.timebloom.app.ui.components.SwipeablePlantCard
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun GardenScreen(
+    viewModel: GardenViewModel,
     onPlantClick: (Long) -> Unit,
     onAddPlantClick: () -> Unit,
     onStatisticsClick: () -> Unit,
     onSettingsClick: () -> Unit
 ) {
     val context = LocalContext.current
-    val database = remember { AppDatabase.getDatabase(context) }
-    val repository = remember {
-        PlantRepository(
-            database.plantDao(),
-            database.checkInDao(),
-            database.achievementDao()
-        )
-    }
-    val viewModel: GardenViewModel = viewModel(
-        factory = object : androidx.lifecycle.ViewModelProvider.Factory {
-            override fun <T : androidx.lifecycle.ViewModel> create(modelClass: Class<T>): T {
-                @Suppress("UNCHECKED_CAST")
-                return GardenViewModel(repository) as T
-            }
-        }
-    )
-
     val plants by viewModel.plants.collectAsState()
     var showCheckInDialog by remember { mutableStateOf<Long?>(null) }
 
@@ -123,13 +106,35 @@ fun GardenScreen(
                     .padding(padding)
             ) {
                 items(plants) { plant ->
-                    PlantCard(
+                    SwipeablePlantCard(
                         plant = plant,
                         onClick = { onPlantClick(plant.id) },
-                        onLongClick = { showCheckInDialog = plant.id }
+                        onLongClick = { showCheckInDialog = plant.id },
+                        onArchive = { viewModel.archivePlant(plant.id) },
+                        onDelete = { viewModel.deletePlant(plant.id) }
                     )
                 }
+
             }
+        }
+    }
+
+    val exportState by viewModel.exportState.collectAsState()
+
+    LaunchedEffect(exportState) {
+        when (exportState) {
+            is ExportState.Success -> {
+                Toast.makeText(context, "Operation successful!", Toast.LENGTH_SHORT).show()
+                viewModel.resetExportState()
+            }
+            is ExportState.Error -> {
+                Toast.makeText(context, (exportState as ExportState.Error).message, Toast.LENGTH_LONG).show()
+                viewModel.resetExportState()
+            }
+            is ExportState.Loading -> {
+                 Toast.makeText(context, "Processing...", Toast.LENGTH_SHORT).show()
+            }
+            else -> {}
         }
     }
 

@@ -17,6 +17,9 @@ interface PlantDao {
     @Query("SELECT * FROM plants WHERE id = :plantId")
     fun getPlantById(plantId: Long): Flow<Plant?>
 
+    @Query("SELECT * FROM plants WHERE id = :plantId LIMIT 1")
+    suspend fun getPlantByIdSync(plantId: Long): Plant?
+
     @Query("SELECT * FROM plants WHERE isArchived = 1")
     fun getArchivedPlants(): Flow<List<Plant>>
 
@@ -34,4 +37,7 @@ interface PlantDao {
 
     @Query("SELECT COUNT(*) FROM plants WHERE isArchived = 0")
     fun getActivePlantCount(): Flow<Int>
+
+    @Query("SELECT * FROM plants WHERE id = :plantId")
+    suspend fun getPlantByIdOnce(plantId: Long): Plant?
 }

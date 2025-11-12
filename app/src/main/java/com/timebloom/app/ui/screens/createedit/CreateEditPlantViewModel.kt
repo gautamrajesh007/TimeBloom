@@ -1,15 +1,25 @@
 package com.timebloom.app.ui.screens.createedit
 
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.timebloom.app.data.local.entity.Difficulty
 import com.timebloom.app.data.local.entity.Frequency
 import com.timebloom.app.data.local.entity.Plant
 import com.timebloom.app.data.repository.PlantRepository
+import com.timebloom.app.ui.viewmodel.PlantCreationUiState
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+
+sealed class SavePlantState {
+    object Idle : SavePlantState()
+    object Loading : SavePlantState()
+    data class Success(val plantId: Long?) : SavePlantState()
+//    object Success : SavePlantState()
+    data class Error(val message: String) : SavePlantState()
+}
 
 class CreateEditPlantViewModel(
     private val repository: PlantRepository,
@@ -19,11 +29,22 @@ class CreateEditPlantViewModel(
     private val _plant = MutableStateFlow<Plant?>(null)
     val plant: StateFlow<Plant?> = _plant.asStateFlow()
 
+    private val _uiState = MutableStateFlow<PlantCreationUiState>(PlantCreationUiState.Idle)
+    val uiState: StateFlow<PlantCreationUiState> = _uiState.asStateFlow()
+
+    private val _saveState = MutableStateFlow<SavePlantState>(SavePlantState.Idle)
+    val saveState: StateFlow<SavePlantState> = _saveState.asStateFlow()
+
     init {
-        plantId?.let {
+        // Only load plant if plantId is valid (not null and not -1)
+        if (plantId != null && plantId > 0) {
             viewModelScope.launch {
-                repository.getPlantById(it).collect { p ->
-                    _plant.value = p
+                try {
+                    repository.getPlantById(plantId).collect { p ->
+                        _plant.value = p
+                    }
+                } catch (e: Exception) {
+                    _saveState.value = SavePlantState.Error("Failed to load plant: ${e.message}")
                 }
             }
         }
@@ -32,29 +53,44 @@ class CreateEditPlantViewModel(
     fun savePlant(
         name: String,
         description: String,
-        difficulty: Difficulty,
         frequency: Frequency,
+        difficulty: Difficulty,
         color: String
     ) {
         viewModelScope.launch {
-            val plantToSave = if (plantId != null && _plant.value != null) {
-                _plant.value!!.copy(
-                    name = name,
-                    description = description,
-                    difficulty = difficulty,
-                    frequency = frequency,
-                    color = color
+            try {
+                _saveState.value = SavePlantState.Loading
+
+                val currentPlant = _plant.value // Capture current value once
+                val plantToSave = if (plantId != null && currentPlant != null) {
+                    currentPlant.copy(
+                        name = name,
+                        description = description,
+                        frequency = frequency,
+                        difficulty = difficulty,
+                        color = color
+                    )
+                } else {
+                    Plant(
+                        name = name,
+                        description = description,
+                        frequency = frequency,
+                        difficulty = difficulty,
+                        color = color,
+                        createdAt = System.currentTimeMillis()
+                    )
+                }
+
+                val id = repository.insertPlant(plantToSave)
+                _saveState.value = SavePlantState.Success(id)
+            } catch (e: Exception) {
+                _saveState.value = SavePlantState.Error(
+                    "Failed to save plant. Please try again. (${e.localizedMessage ?: "Unknown error"})"
                 )
-            } else {
-                Plant(
-                    name = name,
-                    description = description,
-                    difficulty = difficulty,
-                    frequency = frequency,
-                    color = color
-                )
+                Log.e("CreateEditPlantViewModel", "Error saving plant: ${e.message}", e)
             }
-            repository.insertPlant(plantToSave)
         }
     }
+
+
 }

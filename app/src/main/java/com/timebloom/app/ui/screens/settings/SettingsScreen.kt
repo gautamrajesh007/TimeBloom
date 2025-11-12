@@ -1,5 +1,7 @@
 package com.timebloom.app.ui.screens.settings
 
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -45,11 +47,13 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.timebloom.app.data.preferences.UserPreferences
+import com.timebloom.app.ui.screens.garden.GardenViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SettingsScreen(
-    onNavigateBack: () -> Unit
+    onNavigateBack: () -> Unit,
+    gardenViewModel: GardenViewModel // Accept as parameter
 ) {
     val context = LocalContext.current
     val userPreferences = remember { UserPreferences(context) }
@@ -68,6 +72,19 @@ fun SettingsScreen(
 
     var showThemeDialog by remember { mutableStateOf(false) }
     var showGardenThemeDialog by remember { mutableStateOf(false) }
+
+    // Add to SettingsScreen
+    val exportLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.CreateDocument("application/json")
+    ) { uri ->
+        uri?.let { gardenViewModel.exportGarden(it) }
+    }
+
+    val importLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.OpenDocument()
+    ) { uri ->
+        uri?.let { gardenViewModel.importGarden(it) }
+    }
 
     Scaffold(
         topBar = {
@@ -130,14 +147,14 @@ fun SettingsScreen(
                 icon = Icons.Default.Download,
                 title = "Export Garden Data",
                 subtitle = "Save your progress as JSON",
-                onClick = { /* TODO: Export functionality */ }
+                onClick = { exportLauncher.launch("timebloom_backup.json") }
             )
 
             SettingsItem(
                 icon = Icons.Default.Upload,
                 title = "Import Garden Data",
                 subtitle = "Restore from backup",
-                onClick = { /* TODO: Import functionality */ }
+                onClick = { importLauncher.launch(arrayOf("application/json")) }
             )
 
             HorizontalDivider(Modifier, DividerDefaults.Thickness, DividerDefaults.color)
