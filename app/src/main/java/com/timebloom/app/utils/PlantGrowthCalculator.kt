@@ -111,10 +111,11 @@ object PlantGrowthCalculator {
      */
     fun getRainDropsForCheckIn(currentStreak: Int): Int {
         return when {
-            currentStreak < 7 -> 1
-            currentStreak < 30 -> 2
-            currentStreak < 90 -> 3
-            else -> 5
+            currentStreak < 6 -> 0 // 0 drops from 0-5
+            currentStreak == 6 -> 1 // 1 drop on the 7th day (streak becomes 7)
+            currentStreak < 29 -> 2 // 2 drops from 7-29
+            currentStreak < 89 -> 3 // 3 drops from 30-89
+            else -> 5 // 5 drops for 90+
         }
     }
 
