@@ -43,7 +43,8 @@ fun NavigationGraph() {
         PlantRepository(
             database.plantDao(),
             database.checkInDao(),
-            database.achievementDao()
+            database.achievementDao(),
+            context = context.applicationContext
         )
     }
 
@@ -99,9 +100,7 @@ fun NavigationGraph() {
             route = Screen.CreateEditPlant.route,
             arguments = listOf(navArgument("plantId") {
                 type = NavType.LongType
-                // FIX: Remove nullable = true if you're using defaultValue = null
-                // Or, more robustly, set a non-null default and check for it
-                defaultValue = -1L // Changed from null to a non-null default
+                defaultValue = -1L
             })
         ) { backStackEntry ->
             // FIX: Retrieve and check for the default value

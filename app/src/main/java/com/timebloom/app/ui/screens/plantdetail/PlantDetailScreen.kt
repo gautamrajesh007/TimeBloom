@@ -64,7 +64,8 @@ fun PlantDetailScreen(
         PlantRepository(
             database.plantDao(),
             database.checkInDao(),
-            database.achievementDao()
+            database.achievementDao(),
+            context.applicationContext
         )
     }
     val viewModel: PlantDetailViewModel = viewModel(

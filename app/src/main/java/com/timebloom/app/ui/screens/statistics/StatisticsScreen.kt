@@ -46,7 +46,8 @@ fun StatisticsScreen(
         PlantRepository(
             database.plantDao(),
             database.checkInDao(),
-            database.achievementDao()
+            database.achievementDao(),
+            context.applicationContext
         )
     }
     val viewModel: StatisticsViewModel = viewModel(

@@ -95,9 +95,6 @@ fun GardenScreen(
                 Toast.makeText(context, (exportState as ExportState.Error).message, Toast.LENGTH_LONG).show()
                 viewModel.resetExportState()
             }
-            is ExportState.Loading -> {
-                Toast.makeText(context, "Processing...", Toast.LENGTH_SHORT).show()
-            }
             else -> {}
         }
     }

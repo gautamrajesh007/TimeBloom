@@ -59,7 +59,8 @@ fun CreateEditPlantScreen(
         PlantRepository(
             database.plantDao(),
             database.checkInDao(),
-            database.achievementDao()
+            database.achievementDao(),
+            context = context.applicationContext
         )
     }
     val viewModel: CreateEditPlantViewModel = viewModel(

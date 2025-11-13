@@ -55,10 +55,6 @@ class GardenViewModel(
             _checkInState.value = CheckInState.Loading
             try {
                 repository.checkInPlant(plantId, note, mood)
-                val plant = repository.getPlantById(plantId).first() // Get updated plant
-                if (plant != null) {
-                    scheduleNotification(plant)
-                }
                 // Set success state on successful check-in
                 _checkInState.value = CheckInState.Success
             } catch (e: DuplicateCheckInException) {
@@ -70,29 +66,6 @@ class GardenViewModel(
                 _checkInState.value = CheckInState.Error(e.localizedMessage ?: "Check-in failed")
                 Log.e("GardenViewModel", "Check-in failed for plant $plantId", e)
             }
-        }
-    }
-
-    private fun scheduleNotification(plant: Plant) {
-        // Calculate the delay until the next check-in is due
-        val nextCheckInTime = PlantGrowthCalculator.calculateNextCheckInDue(plant)
-        val delay = nextCheckInTime - System.currentTimeMillis()
-
-        // Only schedule if the delay is positive
-        if (delay > 0) {
-            // Pass the plant name to the worker
-            val inputData = Data.Builder()
-                .putString(ReminderWorker.KEY_PLANT_NAME, plant.name)
-                .build()
-
-            val reminderRequest = OneTimeWorkRequestBuilder<ReminderWorker>()
-                .setInitialDelay(delay, TimeUnit.MILLISECONDS)
-                .setInputData(inputData)
-                .addTag("PLANT_REMINDER_${plant.id}") // Tag to cancel it later if needed
-                .build()
-
-            // Enqueue the work
-            WorkManager.getInstance(context).enqueue(reminderRequest)
         }
     }
 
@@ -112,8 +85,6 @@ class GardenViewModel(
 
     fun revivePlant(plantId: Long) {
         viewModelScope.launch {
-            // Add error handling for revivePlant similar to checkInPlant if needed
-            // For example, if InsufficientRainDropsException can be thrown.
             repository.revivePlant(plantId)
         }
     }

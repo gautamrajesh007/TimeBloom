@@ -1,6 +1,10 @@
 package com.timebloom.app.data.repository
 
+import android.content.Context
 import android.util.Log
+import androidx.work.Data
+import androidx.work.OneTimeWorkRequestBuilder
+import androidx.work.WorkManager
 import com.timebloom.app.data.local.dao.AchievementDao
 import com.timebloom.app.data.local.dao.CheckInDao
 import com.timebloom.app.data.local.dao.PlantDao
@@ -9,12 +13,15 @@ import com.timebloom.app.data.local.entity.CheckIn
 import com.timebloom.app.data.local.entity.Mood
 import com.timebloom.app.data.local.entity.Plant
 import com.timebloom.app.utils.PlantGrowthCalculator
+import com.timebloom.app.utils.ReminderWorker
 import kotlinx.coroutines.flow.Flow
+import java.util.concurrent.TimeUnit
 
 class PlantRepository(
     private val plantDao: PlantDao,
     private val checkInDao: CheckInDao,
-    private val achievementDao: AchievementDao
+    private val achievementDao: AchievementDao,
+    private val context: Context
 ) {
     val allActivePlants: Flow<List<Plant>> = plantDao.getAllActivePlants()
 
@@ -48,7 +55,7 @@ class PlantRepository(
 
             // Create check-in
             val checkIn = CheckIn(plantId = plantId, note = note, mood = mood)
-            checkInDao.insertCheckIn(checkIn) // This uses the internal DAO directly
+            checkInDao.insertCheckIn(checkIn)
 
             // Calculate rain drops based on streak
             val rainDropsEarned = PlantGrowthCalculator.getRainDropsForCheckIn(plant.currentStreakCount)
@@ -66,6 +73,9 @@ class PlantRepository(
                 nextCheckInDue = PlantGrowthCalculator.calculateNextCheckInDue(plant)
             )
             plantDao.updatePlant(updatedPlant)
+
+            // Schedule the notification
+            scheduleNotification(updatedPlant)
         } catch (e: Exception) {
             Log.e("PlantRepository", "Check-in failed", e)
             throw e
@@ -95,6 +105,25 @@ class PlantRepository(
     suspend fun archivePlant(plantId: Long) = plantDao.archivePlant(plantId)
 
     val allAchievements: Flow<List<Achievement>> = achievementDao.getAllAchievements()
+
+    private fun scheduleNotification(plant: Plant) {
+        val nextCheckInTime = plant.nextCheckInDue ?: return
+        val delay = nextCheckInTime - System.currentTimeMillis()
+
+        if (delay > 0) {
+            val inputData = Data.Builder()
+                .putString(ReminderWorker.KEY_PLANT_NAME, plant.name)
+                .build()
+
+            val reminderRequest = OneTimeWorkRequestBuilder<ReminderWorker>()
+                .setInitialDelay(delay, TimeUnit.MILLISECONDS)
+                .setInputData(inputData)
+                .addTag("PLANT_REMINDER_${plant.id}")
+                .build()
+
+            WorkManager.getInstance(context).enqueue(reminderRequest)
+        }
+    }
 }
 
 class DatabaseException(message: String, cause: Throwable? = null) : Exception(message, cause)
