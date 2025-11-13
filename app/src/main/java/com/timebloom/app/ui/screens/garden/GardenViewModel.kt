@@ -5,13 +5,19 @@ import android.net.Uri
 import android.util.Log // Import Log for error logging
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import androidx.work.Data
+import androidx.work.OneTimeWorkRequestBuilder
+import androidx.work.WorkManager
 import com.timebloom.app.data.export.GardenExporter
 import com.timebloom.app.data.local.entity.Mood
 import com.timebloom.app.data.local.entity.Plant
 import com.timebloom.app.data.repository.DuplicateCheckInException // Import the specific exception
 import com.timebloom.app.data.repository.PlantRepository
+import com.timebloom.app.utils.PlantGrowthCalculator
+import com.timebloom.app.utils.ReminderWorker
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
+import java.util.concurrent.TimeUnit
 
 sealed class CheckInState {
     object Idle : CheckInState()
@@ -39,7 +45,6 @@ class GardenViewModel(
     private val _exportState = MutableStateFlow<ExportState>(ExportState.Idle)
     val exportState: StateFlow<ExportState> = _exportState.asStateFlow()
 
-    // Add this new state flow for check-in operations
     private val _checkInState = MutableStateFlow<CheckInState>(CheckInState.Idle)
     val checkInState: StateFlow<CheckInState> = _checkInState.asStateFlow()
 
@@ -50,6 +55,10 @@ class GardenViewModel(
             _checkInState.value = CheckInState.Loading
             try {
                 repository.checkInPlant(plantId, note, mood)
+                val plant = repository.getPlantById(plantId).first() // Get updated plant
+                if (plant != null) {
+                    scheduleNotification(plant)
+                }
                 // Set success state on successful check-in
                 _checkInState.value = CheckInState.Success
             } catch (e: DuplicateCheckInException) {
@@ -61,6 +70,29 @@ class GardenViewModel(
                 _checkInState.value = CheckInState.Error(e.localizedMessage ?: "Check-in failed")
                 Log.e("GardenViewModel", "Check-in failed for plant $plantId", e)
             }
+        }
+    }
+
+    private fun scheduleNotification(plant: Plant) {
+        // Calculate the delay until the next check-in is due
+        val nextCheckInTime = PlantGrowthCalculator.calculateNextCheckInDue(plant)
+        val delay = nextCheckInTime - System.currentTimeMillis()
+
+        // Only schedule if the delay is positive
+        if (delay > 0) {
+            // Pass the plant name to the worker
+            val inputData = Data.Builder()
+                .putString(ReminderWorker.KEY_PLANT_NAME, plant.name)
+                .build()
+
+            val reminderRequest = OneTimeWorkRequestBuilder<ReminderWorker>()
+                .setInitialDelay(delay, TimeUnit.MILLISECONDS)
+                .setInputData(inputData)
+                .addTag("PLANT_REMINDER_${plant.id}") // Tag to cancel it later if needed
+                .build()
+
+            // Enqueue the work
+            WorkManager.getInstance(context).enqueue(reminderRequest)
         }
     }
 

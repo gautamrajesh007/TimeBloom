@@ -1,6 +1,11 @@
 package com.timebloom.app.ui.screens.garden
 
+import android.Manifest
+import android.content.pm.PackageManager
+import android.os.Build
 import android.widget.Toast
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -35,6 +40,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import androidx.core.content.ContextCompat
 import com.timebloom.app.ui.components.CheckInDialog
 import com.timebloom.app.ui.components.SwipeablePlantCard
 
@@ -48,6 +54,33 @@ fun GardenScreen(
     onSettingsClick: () -> Unit
 ) {
     val context = LocalContext.current
+
+    // Create a launcher to request the notification permission
+    val notificationPermissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission(),
+        onResult = { isGranted ->
+            if (!isGranted) {
+                // You can show a toast or dialog explaining why the permission is needed
+                Toast.makeText(context, "Notifications are disabled", Toast.LENGTH_SHORT).show()
+            }
+        }
+    )
+
+    // Check and request permission when the screen is first composed
+    LaunchedEffect(Unit) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) { // Android 13
+            when (ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS)) {
+                PackageManager.PERMISSION_DENIED -> {
+                    // Request the permission
+                    notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+                }
+                else -> {
+                    // Permission is already granted
+                }
+            }
+        }
+    }
+
     val plants by viewModel.plants.collectAsState()
     var showCheckInDialog by remember { mutableStateOf<Long?>(null) }
 
