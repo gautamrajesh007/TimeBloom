@@ -41,8 +41,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
+import com.timebloom.app.data.local.entity.Plant
 import com.timebloom.app.ui.components.CheckInDialog
+import com.timebloom.app.ui.components.RevivalDialog
 import com.timebloom.app.ui.components.SwipeablePlantCard
+import com.timebloom.app.utils.PlantGrowthCalculator
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -83,6 +86,8 @@ fun GardenScreen(
 
     val plants by viewModel.plants.collectAsState()
     var showCheckInDialog by remember { mutableStateOf<Long?>(null) }
+    var showRevivalDialog by remember { mutableStateOf<Plant?>(null) }
+
 
     val exportState by viewModel.exportState.collectAsState()
     LaunchedEffect(exportState) {
@@ -101,7 +106,7 @@ fun GardenScreen(
 
     val checkInState by viewModel.checkInState.collectAsState()
     LaunchedEffect(checkInState) {
-        when (checkInState) {
+        when (val state = checkInState) {
             is CheckInState.Success -> {
                 Toast.makeText(context, "Plant checked in successfully!", Toast.LENGTH_SHORT).show()
                 viewModel.resetCheckInState()
@@ -110,10 +115,10 @@ fun GardenScreen(
                 Toast.makeText(context, (checkInState as CheckInState.Error).message, Toast.LENGTH_LONG).show()
                 viewModel.resetCheckInState()
             }
-            is CheckInState.Loading -> {
-                Toast.makeText(context, "Processing...", Toast.LENGTH_SHORT).show()
+            is CheckInState.NeedsRevival -> {
+                showRevivalDialog = state.plant
             }
-            else -> {} // CheckInState.Idle, do nothing
+            else -> {}
         }
     }
 
@@ -187,24 +192,23 @@ fun GardenScreen(
         }
     }
 
-//    val exportState by viewModel.exportState.collectAsState()
-//
-//    LaunchedEffect(exportState) {
-//        when (exportState) {
-//            is ExportState.Success -> {
-//                Toast.makeText(context, "Operation successful!", Toast.LENGTH_SHORT).show()
-//                viewModel.resetExportState()
-//            }
-//            is ExportState.Error -> {
-//                Toast.makeText(context, (exportState as ExportState.Error).message, Toast.LENGTH_LONG).show()
-//                viewModel.resetExportState()
-//            }
-//            is ExportState.Loading -> {
-//                 Toast.makeText(context, "Processing...", Toast.LENGTH_SHORT).show()
-//            }
-//            else -> {}
-//        }
-//    }
+    showRevivalDialog?.let { plant ->
+        val revivalCost = PlantGrowthCalculator.calculateReviveCost(plant)
+        RevivalDialog(
+            plantName = plant.name,
+            currentRainDrops = plant.rainDrops,
+            revivalCost = revivalCost,
+            onDismiss = {
+                showRevivalDialog = null
+                viewModel.resetCheckInState() // Reset state on dismiss
+            },
+            onRevive = {
+                viewModel.revivePlant(plant.id)
+                showRevivalDialog = null
+                // No need to reset state, revivePlant will set it to Success/Error
+            }
+        )
+    }
 
     showCheckInDialog?.let { plantId ->
         val plant = plants.find { it.id == plantId }

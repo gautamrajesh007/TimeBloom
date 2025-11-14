@@ -7,6 +7,8 @@ import com.timebloom.app.data.local.entity.CheckIn
 import com.timebloom.app.data.local.entity.Mood
 import com.timebloom.app.data.local.entity.Plant
 import com.timebloom.app.data.repository.DuplicateCheckInException
+import com.timebloom.app.data.repository.InsufficientRainDropsException
+import com.timebloom.app.data.repository.PlantIsWitheringException
 import com.timebloom.app.data.repository.PlantRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -20,6 +22,7 @@ sealed class CheckInState {
     object Loading : CheckInState()
     object Success : CheckInState()
     data class Error(val message: String) : CheckInState()
+    data class NeedsRevival(val plant: Plant) : CheckInState()
 }
 
 class PlantDetailViewModel(
@@ -38,17 +41,36 @@ class PlantDetailViewModel(
 
     fun checkInPlant(note: String = "", mood: Mood = Mood.NEUTRAL) {
         viewModelScope.launch {
-            // Add try-catch block
             _checkInState.value = CheckInState.Loading
             try {
                 repository.checkInPlant(plantId, note, mood)
                 _checkInState.value = CheckInState.Success
+            } catch (e: PlantIsWitheringException) {
+                val currentPlant = plant.value
+                if (currentPlant != null) {
+                    _checkInState.value = CheckInState.NeedsRevival(currentPlant)
+                } else {
+                    _checkInState.value = CheckInState.Error("Plant data not found")
+                }
             } catch (e: DuplicateCheckInException) {
                 _checkInState.value = CheckInState.Error(e.message ?: "Already watered today")
                 Log.w("PlantDetailViewModel", "Duplicate Check-in: ${e.message}")
             } catch (e: Exception) {
                 _checkInState.value = CheckInState.Error(e.localizedMessage ?: "Check-in failed")
                 Log.e("PlantDetailViewModel", "Check-in failed", e)
+            }
+        }
+    }
+
+    fun revivePlant() {
+        viewModelScope.launch {
+            try {
+                repository.revivePlant(plantId)
+                _checkInState.value = CheckInState.Success // Reuse success state
+            } catch (e: InsufficientRainDropsException) {
+                _checkInState.value = CheckInState.Error(e.message ?: "Not enough rain drops")
+            } catch (e: Exception) {
+                _checkInState.value = CheckInState.Error(e.message ?: "Revival failed")
             }
         }
     }

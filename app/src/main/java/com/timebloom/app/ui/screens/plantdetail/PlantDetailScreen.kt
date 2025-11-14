@@ -45,8 +45,13 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.timebloom.app.data.local.AppDatabase
+import com.timebloom.app.data.local.entity.CheckIn
+import com.timebloom.app.data.local.entity.GrowthStage
+import com.timebloom.app.data.local.entity.Plant
 import com.timebloom.app.data.repository.PlantRepository
 import com.timebloom.app.ui.components.CheckInDialog
+import com.timebloom.app.ui.components.RevivalDialog
+import com.timebloom.app.utils.PlantGrowthCalculator
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -81,6 +86,7 @@ fun PlantDetailScreen(
     val checkIns by viewModel.checkIns.collectAsState()
     var showCheckInDialog by remember { mutableStateOf(false) }
     var showDeleteDialog by remember { mutableStateOf(false) }
+    var showRevivalDialog by remember { mutableStateOf<Plant?>(null) }
 
     val checkInState by viewModel.checkInState.collectAsState()
     LaunchedEffect(checkInState) {
@@ -92,6 +98,9 @@ fun PlantDetailScreen(
             is CheckInState.Error -> {
                 Toast.makeText(context, state.message, Toast.LENGTH_LONG).show()
                 viewModel.resetCheckInState()
+            }
+            is CheckInState.NeedsRevival -> {
+                showRevivalDialog = state.plant
             }
             else -> {}
         }
@@ -118,12 +127,22 @@ fun PlantDetailScreen(
         },
         floatingActionButton = {
             ExtendedFloatingActionButton(
-                onClick = { showCheckInDialog = true },
+                onClick = {
+                    // Check if plant is withering before showing check-in
+                    plant?.let {
+                        if (PlantGrowthCalculator.shouldBeWithering(it)) {
+                            showRevivalDialog = it // Show revival dialog instead
+                        } else {
+                            showCheckInDialog = true // Show normal check-in
+                        }
+                    }
+                },
                 icon = { Icon(Icons.Default.WaterDrop, "Water") },
                 text = { Text("Water Plant") }
             )
         }
-    ) { padding ->
+    ) {
+            padding ->
         plant?.let { p ->
             LazyColumn(
                 modifier = Modifier
@@ -147,12 +166,20 @@ fun PlantDetailScreen(
                             horizontalAlignment = Alignment.CenterHorizontally
                         ) {
                             Text(
-                                text = p.growthStage.emoji,
+                                // Show withering emoji if needed
+                                text = if (PlantGrowthCalculator.shouldBeWithering(p))
+                                    GrowthStage.WITHERING.emoji
+                                else
+                                    p.growthStage.emoji,
                                 fontSize = 80.sp
                             )
                             Spacer(modifier = Modifier.height(8.dp))
                             Text(
-                                text = p.growthStage.displayName,
+                                // Show withering text if needed
+                                text = if (PlantGrowthCalculator.shouldBeWithering(p))
+                                    GrowthStage.WITHERING.displayName
+                                else
+                                    p.growthStage.displayName,
                                 style = MaterialTheme.typography.titleLarge
                             )
                         }
@@ -221,45 +248,62 @@ fun PlantDetailScreen(
                 }
             }
         }
-    }
 
-    if (showCheckInDialog) {
-        plant?.let { p ->
-            CheckInDialog(
-                plantName = p.name,
-                onDismiss = { showCheckInDialog = false },
-                onConfirm = { note, mood ->
-                    viewModel.checkInPlant(note, mood)
-                    showCheckInDialog = false
+        showRevivalDialog?.let { plant ->
+            val revivalCost = PlantGrowthCalculator.calculateReviveCost(plant)
+            RevivalDialog(
+                plantName = plant.name,
+                currentRainDrops = plant.rainDrops,
+                revivalCost = revivalCost,
+                onDismiss = {
+                    showRevivalDialog = null
+                    viewModel.resetCheckInState()
+                },
+                onRevive = {
+                    viewModel.revivePlant()
+                    showRevivalDialog = null
                 }
             )
         }
-    }
 
-    if (showDeleteDialog) {
-        AlertDialog(
-            onDismissRequest = { showDeleteDialog = false },
-            title = { Text("Delete Plant?") },
-            text = { Text("This will permanently delete this plant and all its check-in history.") },
-            confirmButton = {
-                Button(
-                    onClick = {
-                        viewModel.deletePlant()
-                        onNavigateBack()
-                    },
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = MaterialTheme.colorScheme.error
-                    )
-                ) {
-                    Text("Delete")
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { showDeleteDialog = false }) {
-                    Text("Cancel")
-                }
+        if (showCheckInDialog) {
+            plant?.let { p ->
+                CheckInDialog(
+                    plantName = p.name,
+                    onDismiss = { showCheckInDialog = false },
+                    onConfirm = { note, mood ->
+                        viewModel.checkInPlant(note, mood)
+                        showCheckInDialog = false
+                    }
+                )
             }
-        )
+        }
+
+        if (showDeleteDialog) {
+            AlertDialog(
+                onDismissRequest = { showDeleteDialog = false },
+                title = { Text("Delete Plant?") },
+                text = { Text("This will permanently delete this plant and all its check-in history.") },
+                confirmButton = {
+                    Button(
+                        onClick = {
+                            viewModel.deletePlant()
+                            onNavigateBack()
+                        },
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = MaterialTheme.colorScheme.error
+                        )
+                    ) {
+                        Text("Delete")
+                    }
+                },
+                dismissButton = {
+                    TextButton(onClick = { showDeleteDialog = false }) {
+                        Text("Cancel")
+                    }
+                }
+            )
+        }
     }
 }
 

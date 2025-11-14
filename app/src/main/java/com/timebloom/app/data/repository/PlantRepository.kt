@@ -49,6 +49,12 @@ class PlantRepository(
         try {
             val plant = plantDao.getPlantByIdSync(plantId) ?: throw PlantNotFoundException()
 
+            // Check for withering
+            if (PlantGrowthCalculator.shouldBeWithering(plant)) {
+                throw PlantIsWitheringException()
+            }
+
+            // Check for duplicates
             if (PlantGrowthCalculator.hasCheckedInToday(plant)) {
                 throw DuplicateCheckInException()
             }
@@ -90,12 +96,14 @@ class PlantRepository(
             throw InsufficientRainDropsException("Need $reviveCost rain drops, have ${plant.rainDrops}")
         }
 
-        plantDao.updatePlant(
-            plant.copy(
-                lastCheckIn = System.currentTimeMillis(),
-                rainDrops = plant.rainDrops - reviveCost
-            )
+        val revivedPlant = plant.copy(
+            lastCheckIn = System.currentTimeMillis(),
+            rainDrops = plant.rainDrops - reviveCost,
+            currentStreakCount = 1, // Reset streak to 1 with revival counts as first check-in
+            totalCheckIns = plant.totalCheckIns + 1, // Count revival as a check-in
+            nextCheckInDue = PlantGrowthCalculator.calculateNextCheckInDue(plant.copy(lastCheckIn = System.currentTimeMillis()))
         )
+        plantDao.updatePlant(revivedPlant)
     }
 
     suspend fun getAllCheckIns(): List<CheckIn> {
@@ -130,3 +138,4 @@ class DatabaseException(message: String, cause: Throwable? = null) : Exception(m
 class PlantNotFoundException : Exception("Plant not found")
 class DuplicateCheckInException : Exception("Already watered today")
 class InsufficientRainDropsException(message: String) : Exception(message)
+class PlantIsWitheringException : Exception("Plant is withering and must be revived.")

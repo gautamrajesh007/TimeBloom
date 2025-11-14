@@ -12,6 +12,8 @@ import com.timebloom.app.data.export.GardenExporter
 import com.timebloom.app.data.local.entity.Mood
 import com.timebloom.app.data.local.entity.Plant
 import com.timebloom.app.data.repository.DuplicateCheckInException // Import the specific exception
+import com.timebloom.app.data.repository.InsufficientRainDropsException
+import com.timebloom.app.data.repository.PlantIsWitheringException
 import com.timebloom.app.data.repository.PlantRepository
 import com.timebloom.app.utils.PlantGrowthCalculator
 import com.timebloom.app.utils.ReminderWorker
@@ -24,6 +26,7 @@ sealed class CheckInState {
     object Loading : CheckInState()
     object Success : CheckInState()
     data class Error(val message: String) : CheckInState()
+    data class NeedsRevival(val plant: Plant) : CheckInState()
 }
 
 sealed class ExportState {
@@ -57,6 +60,13 @@ class GardenViewModel(
                 repository.checkInPlant(plantId, note, mood)
                 // Set success state on successful check-in
                 _checkInState.value = CheckInState.Success
+            } catch (e: PlantIsWitheringException) {
+                val witheringPlant = plants.value.find { it.id == plantId }
+                if (witheringPlant != null) {
+                    _checkInState.value = CheckInState.NeedsRevival(witheringPlant)
+                } else {
+                    _checkInState.value = CheckInState.Error("Unknown plant is withering")
+                }
             } catch (e: DuplicateCheckInException) {
                 // Catch the duplicate check-in exception
                 _checkInState.value = CheckInState.Error(e.message ?: "Already watered today")
@@ -85,7 +95,14 @@ class GardenViewModel(
 
     fun revivePlant(plantId: Long) {
         viewModelScope.launch {
-            repository.revivePlant(plantId)
+            try {
+                repository.revivePlant(plantId)
+                _checkInState.value = CheckInState.Success
+            } catch (e: InsufficientRainDropsException) {
+                _checkInState.value = CheckInState.Error(e.message ?: "Not enough rain drops")
+            } catch (e: Exception) {
+                _checkInState.value = CheckInState.Error(e.message ?: "Revival failed")
+            }
         }
     }
 
