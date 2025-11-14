@@ -41,10 +41,10 @@ object PlantGrowthCalculator {
         val daysSinceLastCheckIn = ChronoUnit.DAYS.between(lastCheckInDate, today)
 
         val gracePeriod = when (plant.frequency) {
-            Frequency.DAILY -> 2L
+            Frequency.DAILY -> 1L
             Frequency.TWICE_WEEKLY -> 4L
-            Frequency.THREE_TIMES_WEEKLY -> 3L
-            Frequency.WEEKLY -> 8L
+            Frequency.THREE_TIMES_WEEKLY -> 2L
+            Frequency.WEEKLY -> 7L
         }
 
         return daysSinceLastCheckIn > gracePeriod

@@ -99,8 +99,7 @@ class PlantRepository(
         val revivedPlant = plant.copy(
             lastCheckIn = System.currentTimeMillis(),
             rainDrops = plant.rainDrops - reviveCost,
-            currentStreakCount = 1, // Reset streak to 1 with revival counts as first check-in
-            totalCheckIns = plant.totalCheckIns + 1, // Count revival as a check-in
+            currentStreakCount = plant.currentStreakCount,
             nextCheckInDue = PlantGrowthCalculator.calculateNextCheckInDue(plant.copy(lastCheckIn = System.currentTimeMillis()))
         )
         plantDao.updatePlant(revivedPlant)
