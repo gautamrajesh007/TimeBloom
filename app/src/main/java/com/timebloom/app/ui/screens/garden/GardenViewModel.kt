@@ -13,6 +13,7 @@ import com.timebloom.app.data.local.entity.Mood
 import com.timebloom.app.data.local.entity.Plant
 import com.timebloom.app.data.repository.DuplicateCheckInException // Import the specific exception
 import com.timebloom.app.data.repository.InsufficientRainDropsException
+import com.timebloom.app.data.repository.PlantIsDeadException
 import com.timebloom.app.data.repository.PlantIsWitheringException
 import com.timebloom.app.data.repository.PlantRepository
 import com.timebloom.app.utils.PlantGrowthCalculator
@@ -27,6 +28,7 @@ sealed class CheckInState {
     object Success : CheckInState()
     data class Error(val message: String) : CheckInState()
     data class NeedsRevival(val plant: Plant) : CheckInState()
+    data class NeedsRestart(val plant: Plant?) : CheckInState()
 }
 
 sealed class ExportState {
@@ -67,6 +69,13 @@ class GardenViewModel(
                 } else {
                     _checkInState.value = CheckInState.Error("Unknown plant is withering")
                 }
+            } catch (e: PlantIsDeadException){
+                val currentPlant = plants.value.find { it.id == plantId }
+                if (currentPlant != null) {
+                    _checkInState.value = CheckInState.NeedsRestart(currentPlant)
+                } else {
+                    _checkInState.value = CheckInState.Error("Plant data not found")
+                }
             } catch (e: DuplicateCheckInException) {
                 // Catch the duplicate check-in exception
                 _checkInState.value = CheckInState.Error(e.message ?: "Already watered today")
@@ -82,6 +91,13 @@ class GardenViewModel(
     fun archivePlant(plantId: Long) {
         viewModelScope.launch {
             repository.archivePlant(plantId)
+        }
+    }
+
+    fun restartPlant(plantId: Long) {
+        viewModelScope.launch {
+            repository.restartPlant(plantId)
+            _checkInState.value = CheckInState.Idle
         }
     }
 

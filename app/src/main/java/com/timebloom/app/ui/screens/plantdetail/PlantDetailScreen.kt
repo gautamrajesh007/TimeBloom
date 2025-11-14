@@ -50,6 +50,7 @@ import com.timebloom.app.data.local.entity.GrowthStage
 import com.timebloom.app.data.local.entity.Plant
 import com.timebloom.app.data.repository.PlantRepository
 import com.timebloom.app.ui.components.CheckInDialog
+import com.timebloom.app.ui.components.PlantDeadDialog
 import com.timebloom.app.ui.components.RevivalDialog
 import com.timebloom.app.utils.PlantGrowthCalculator
 import java.text.SimpleDateFormat
@@ -87,6 +88,7 @@ fun PlantDetailScreen(
     var showCheckInDialog by remember { mutableStateOf(false) }
     var showDeleteDialog by remember { mutableStateOf(false) }
     var showRevivalDialog by remember { mutableStateOf<Plant?>(null) }
+    var showPlantDeadDialog by remember { mutableStateOf<Plant?>(null) }
 
     val checkInState by viewModel.checkInState.collectAsState()
     LaunchedEffect(checkInState) {
@@ -101,6 +103,10 @@ fun PlantDetailScreen(
             }
             is CheckInState.NeedsRevival -> {
                 showRevivalDialog = state.plant
+            }
+            is CheckInState.NeedsRestart -> {
+                showRevivalDialog = state.plant
+                viewModel.resetCheckInState()
             }
             else -> {}
         }
@@ -128,12 +134,14 @@ fun PlantDetailScreen(
         floatingActionButton = {
             ExtendedFloatingActionButton(
                 onClick = {
-                    // Check if plant is withering before showing check-in
-                    plant?.let {
-                        if (PlantGrowthCalculator.shouldBeWithering(it)) {
-                            showRevivalDialog = it // Show revival dialog instead
-                        } else {
-                            showCheckInDialog = true // Show normal check-in
+                    plant?.let { p ->
+                        val isDead = PlantGrowthCalculator.shouldBeDead(p)
+                        val isWithering = PlantGrowthCalculator.shouldBeWithering(p)
+
+                        when {
+                            isDead -> showPlantDeadDialog = p
+                            isWithering -> showRevivalDialog = p
+                            else -> showCheckInDialog = true
                         }
                     }
                 },
@@ -153,6 +161,15 @@ fun PlantDetailScreen(
             ) {
                 // Plant Visual
                 item {
+                    val isDead = PlantGrowthCalculator.shouldBeDead(p)
+                    val isWithering = PlantGrowthCalculator.shouldBeWithering(p)
+                    val displayStage = when {
+                        isDead -> GrowthStage.DEAD
+                        isWithering -> GrowthStage.WITHERING
+                        else -> p.growthStage
+                    }
+
+
                     Card(
                         modifier = Modifier.fillMaxWidth(),
                         colors = CardDefaults.cardColors(
@@ -166,20 +183,12 @@ fun PlantDetailScreen(
                             horizontalAlignment = Alignment.CenterHorizontally
                         ) {
                             Text(
-                                // Show withering emoji if needed
-                                text = if (PlantGrowthCalculator.shouldBeWithering(p))
-                                    GrowthStage.WITHERING.emoji
-                                else
-                                    p.growthStage.emoji,
+                                text = displayStage.emoji,
                                 fontSize = 80.sp
                             )
                             Spacer(modifier = Modifier.height(8.dp))
                             Text(
-                                // Show withering text if needed
-                                text = if (PlantGrowthCalculator.shouldBeWithering(p))
-                                    GrowthStage.WITHERING.displayName
-                                else
-                                    p.growthStage.displayName,
+                                text = displayStage.displayName,
                                 style = MaterialTheme.typography.titleLarge
                             )
                         }
@@ -262,6 +271,21 @@ fun PlantDetailScreen(
                 onRevive = {
                     viewModel.revivePlant()
                     showRevivalDialog = null
+                }
+            )
+        }
+
+        showPlantDeadDialog?.let { plant ->
+            PlantDeadDialog(
+                plantName = plant.name,
+                onDismiss = { showPlantDeadDialog = null },
+                onRestart = {
+                    viewModel.restartPlant(plantId)
+                    showPlantDeadDialog = null
+                },
+                onArchive = {
+                    viewModel.archivePlant(plant.id)
+                    showPlantDeadDialog = null
                 }
             )
         }

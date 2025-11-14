@@ -41,8 +41,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.timebloom.app.data.local.entity.Plant
 import com.timebloom.app.ui.components.CheckInDialog
+import com.timebloom.app.ui.components.PlantDeadDialog
 import com.timebloom.app.ui.components.RevivalDialog
 import com.timebloom.app.ui.components.SwipeablePlantCard
 import com.timebloom.app.utils.PlantGrowthCalculator
@@ -87,6 +89,7 @@ fun GardenScreen(
     val plants by viewModel.plants.collectAsState()
     var showCheckInDialog by remember { mutableStateOf<Long?>(null) }
     var showRevivalDialog by remember { mutableStateOf<Plant?>(null) }
+    var showPlantDeadDialog by remember { mutableStateOf<Plant?>(null) }
 
 
     val exportState by viewModel.exportState.collectAsState()
@@ -117,6 +120,10 @@ fun GardenScreen(
             }
             is CheckInState.NeedsRevival -> {
                 showRevivalDialog = state.plant
+            }
+            is CheckInState.NeedsRestart -> {
+                showRevivalDialog = state.plant
+                viewModel.resetCheckInState()
             }
             else -> {}
         }
@@ -200,12 +207,26 @@ fun GardenScreen(
             revivalCost = revivalCost,
             onDismiss = {
                 showRevivalDialog = null
-                viewModel.resetCheckInState() // Reset state on dismiss
+                viewModel.resetCheckInState()
             },
             onRevive = {
                 viewModel.revivePlant(plant.id)
                 showRevivalDialog = null
-                // No need to reset state, revivePlant will set it to Success/Error
+            }
+        )
+    }
+
+    showPlantDeadDialog?.let { plant ->
+        PlantDeadDialog(
+            plantName = plant.name,
+            onDismiss = { showPlantDeadDialog = null },
+            onRestart = {
+                viewModel.restartPlant(plant.id)
+                showPlantDeadDialog = null
+            },
+            onArchive = {
+                viewModel.archivePlant(plant.id)
+                showPlantDeadDialog = null
             }
         )
     }

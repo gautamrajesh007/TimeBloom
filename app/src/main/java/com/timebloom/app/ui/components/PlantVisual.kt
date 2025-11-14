@@ -56,6 +56,7 @@ fun PlantVisual(
                 GrowthStage.FLOWER -> drawFlower(centerX + swayOffset, centerY, color)
                 GrowthStage.FRUIT -> drawFruit(centerX + swayOffset, centerY, color)
                 GrowthStage.WITHERING -> drawWithering(centerX, centerY, unhealthyColor)
+                GrowthStage.DEAD -> drawDead(centerX, centerY, unhealthyColor)
             }
         }
     }
@@ -264,5 +265,30 @@ private fun DrawScope.drawWithering(x: Float, y: Float, color: Color) {
         color = color.copy(alpha = 0.5f),
         topLeft = Offset(x - 15, y - 30),
         size = androidx.compose.ui.geometry.Size(15f, 8f)
+    )
+}
+
+private fun DrawScope.drawDead(x: Float, y: Float, color: Color) {
+    // Fallen/dead plant remains
+    val deadStemPath = Path().apply {
+        moveTo(x - 20, y - 10)
+        lineTo(x + 20, y - 5)
+    }
+    drawPath(
+        path = deadStemPath,
+        color = color.copy(alpha = 0.3f),
+        style = Stroke(width = 3f)
+    )
+
+    // Dead leaves on ground
+    drawOval(
+        color = color.copy(alpha = 0.2f),
+        topLeft = Offset(x - 15, y - 15),
+        size = androidx.compose.ui.geometry.Size(10f, 6f)
+    )
+    drawOval(
+        color = color.copy(alpha = 0.2f),
+        topLeft = Offset(x + 5, y - 12),
+        size = androidx.compose.ui.geometry.Size(10f, 6f)
     )
 }

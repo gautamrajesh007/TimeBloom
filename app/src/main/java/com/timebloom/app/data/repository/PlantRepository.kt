@@ -10,6 +10,7 @@ import com.timebloom.app.data.local.dao.CheckInDao
 import com.timebloom.app.data.local.dao.PlantDao
 import com.timebloom.app.data.local.entity.Achievement
 import com.timebloom.app.data.local.entity.CheckIn
+import com.timebloom.app.data.local.entity.GrowthStage
 import com.timebloom.app.data.local.entity.Mood
 import com.timebloom.app.data.local.entity.Plant
 import com.timebloom.app.utils.PlantGrowthCalculator
@@ -49,6 +50,11 @@ class PlantRepository(
         try {
             val plant = plantDao.getPlantByIdSync(plantId) ?: throw PlantNotFoundException()
 
+            // Check for death
+            if (PlantGrowthCalculator.shouldBeDead(plant)) {
+                throw PlantIsDeadException()
+            }
+
             // Check for withering
             if (PlantGrowthCalculator.shouldBeWithering(plant)) {
                 throw PlantIsWitheringException()
@@ -59,17 +65,28 @@ class PlantRepository(
                 throw DuplicateCheckInException()
             }
 
+            val daysSinceLastCheckIn = PlantGrowthCalculator.getDaysSinceLastCheckIn(plant)
+            val streak: Int
+            val rainDropsEarned: Int
+
+            if (daysSinceLastCheckIn == 1L || plant.totalCheckIns == 0) {
+                // Streak continues (or first check-in)
+                streak = plant.currentStreakCount + 1
+                rainDropsEarned = PlantGrowthCalculator.getRainDropsForCheckIn(plant.currentStreakCount)
+            } else {
+                // Streak is broken
+                streak = 1
+                rainDropsEarned = PlantGrowthCalculator.getRainDropsForCheckIn(0)
+            }
+
             // Create check-in
             val checkIn = CheckIn(plantId = plantId, note = note, mood = mood)
             checkInDao.insertCheckIn(checkIn)
 
-            // Calculate rain drops based on streak
-            val rainDropsEarned = PlantGrowthCalculator.getRainDropsForCheckIn(plant.currentStreakCount)
-
-            // Update plant using PlantGrowthCalculator
+            // Update plant
             val updatedPlant = plant.copy(
-                currentStreakCount = plant.currentStreakCount + 1,
-                longestStreakCount = maxOf(plant.longestStreakCount, plant.currentStreakCount + 1),
+                currentStreakCount = streak,
+                longestStreakCount = maxOf(plant.longestStreakCount, streak),
                 totalCheckIns = plant.totalCheckIns + 1,
                 lastCheckIn = System.currentTimeMillis(),
                 growthStage = PlantGrowthCalculator.calculateGrowthStage(
@@ -90,6 +107,11 @@ class PlantRepository(
 
     suspend fun revivePlant(plantId: Long) {
         val plant = plantDao.getPlantByIdSync(plantId) ?: return
+
+        if (PlantGrowthCalculator.shouldBeDead(plant)) {
+            throw PlantIsDeadException()
+        }
+
         val reviveCost = PlantGrowthCalculator.calculateReviveCost(plant)
 
         if (plant.rainDrops < reviveCost) {
@@ -103,6 +125,19 @@ class PlantRepository(
             nextCheckInDue = PlantGrowthCalculator.calculateNextCheckInDue(plant.copy(lastCheckIn = System.currentTimeMillis()))
         )
         plantDao.updatePlant(revivedPlant)
+    }
+
+    suspend fun restartPlant(plantId: Long) {
+        val plant = plantDao.getPlantByIdSync(plantId) ?: throw PlantNotFoundException()
+
+        val restartedPlant = plant.copy(
+            growthStage = GrowthStage.SEED,
+            currentStreakCount = 0,
+            totalCheckIns = 0,
+            lastCheckIn = null,
+            nextCheckInDue = null
+        )
+        plantDao.updatePlant(restartedPlant)
     }
 
     suspend fun getAllCheckIns(): List<CheckIn> {
@@ -138,3 +173,4 @@ class PlantNotFoundException : Exception("Plant not found")
 class DuplicateCheckInException : Exception("Already watered today")
 class InsufficientRainDropsException(message: String) : Exception(message)
 class PlantIsWitheringException : Exception("Plant is withering and must be revived.")
+class PlantIsDeadException : Exception("This plant has withered beyond revival.")

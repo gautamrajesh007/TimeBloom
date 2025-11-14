@@ -11,10 +11,7 @@ import java.util.concurrent.TimeUnit
 
 object PlantGrowthCalculator {
 
-    companion object {
-        // Set the point of no return, e.g., 7 days of no check-ins
-        const val DEATH_GRACE_PERIOD_DAYS = 7L
-    }
+    const val DEATH_GRACE_PERIOD_DAYS = 7L
 
     /**
      * Calculate the next growth stage based on total check-ins and difficulty
@@ -32,18 +29,13 @@ object PlantGrowthCalculator {
     }
 
     /**
-     * Check if plant should be withering based on missed check-ins
-     * Now timezone-aware
+     * Check if plant should be withering based on missed check-ins Timezone-aware
      */
     fun shouldBeWithering(plant: Plant): Boolean {
+        if (shouldBeDead(plant)) return false
+
         val lastCheckIn = plant.lastCheckIn ?: return false
-
-        val lastCheckInDate = Instant.ofEpochMilli(lastCheckIn)
-            .atZone(ZoneId.systemDefault())
-            .toLocalDate()
-
-        val today = LocalDate.now()
-        val daysSinceLastCheckIn = ChronoUnit.DAYS.between(lastCheckInDate, today)
+        val daysSinceLastCheckIn = getDaysSinceLastCheckIn(plant)
 
         val gracePeriod = when (plant.frequency) {
             Frequency.DAILY -> 1L
@@ -53,6 +45,28 @@ object PlantGrowthCalculator {
         }
 
         return daysSinceLastCheckIn > gracePeriod
+    }
+
+    /**
+     * Calculate days since last check-in - Timezone aware
+     */
+    fun getDaysSinceLastCheckIn(plant: Plant): Long {
+        val lastCheckIn = plant.lastCheckIn ?: return 0L
+        val lastCheckInDate = Instant.ofEpochMilli(lastCheckIn)
+            .atZone(ZoneId.systemDefault())
+            .toLocalDate()
+        val today = LocalDate.now()
+        return ChronoUnit.DAYS.between(lastCheckInDate, today)
+    }
+
+    /**
+     * Check if plant should be dead based on missed check-ins
+     */
+    fun shouldBeDead(plant: Plant): Boolean {
+        // Don't kill a brand new plant
+        if (plant.lastCheckIn == null) return false
+        val daysSinceLastCheckIn = getDaysSinceLastCheckIn(plant)
+        return daysSinceLastCheckIn > DEATH_GRACE_PERIOD_DAYS
     }
 
     /**
@@ -158,6 +172,7 @@ object PlantGrowthCalculator {
             GrowthStage.PLANT -> 15f
             GrowthStage.FLOWER -> 30f
             GrowthStage.FRUIT, GrowthStage.WITHERING -> return 0
+            else -> { return 0 }
         }
 
         val pointsNeeded = nextStagePoints - currentPoints

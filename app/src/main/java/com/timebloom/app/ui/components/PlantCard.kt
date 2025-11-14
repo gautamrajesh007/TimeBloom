@@ -54,8 +54,13 @@ fun PlantCard(
         label = "card_press_animation"
     )
 
+    val isDead = PlantGrowthCalculator.shouldBeDead(plant)
     val isWithering = PlantGrowthCalculator.shouldBeWithering(plant)
-    val displayStage = if (isWithering) GrowthStage.WITHERING else plant.growthStage
+    val displayStage = when {
+        isDead -> GrowthStage.DEAD
+        isWithering -> GrowthStage.WITHERING
+        else -> plant.growthStage
+    }
 
     Card(
         modifier = modifier
@@ -87,7 +92,7 @@ fun PlantCard(
             PlantVisual(
                 growthStage = displayStage,
                 plantColor = plant.color,
-                isHealthy = !isWithering,
+                isHealthy = !isWithering && !isDead,
                 modifier = Modifier.size(100.dp)
             )
 

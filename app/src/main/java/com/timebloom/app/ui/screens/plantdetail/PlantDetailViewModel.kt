@@ -8,6 +8,7 @@ import com.timebloom.app.data.local.entity.Mood
 import com.timebloom.app.data.local.entity.Plant
 import com.timebloom.app.data.repository.DuplicateCheckInException
 import com.timebloom.app.data.repository.InsufficientRainDropsException
+import com.timebloom.app.data.repository.PlantIsDeadException
 import com.timebloom.app.data.repository.PlantIsWitheringException
 import com.timebloom.app.data.repository.PlantRepository
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -23,6 +24,7 @@ sealed class CheckInState {
     object Success : CheckInState()
     data class Error(val message: String) : CheckInState()
     data class NeedsRevival(val plant: Plant) : CheckInState()
+    data class NeedsRestart(val plant: Plant?) : CheckInState()
 }
 
 class PlantDetailViewModel(
@@ -52,6 +54,13 @@ class PlantDetailViewModel(
                 } else {
                     _checkInState.value = CheckInState.Error("Plant data not found")
                 }
+            } catch (e: PlantIsDeadException){
+                val currentPlant = plant.value
+                if (currentPlant != null) {
+                    _checkInState.value = CheckInState.NeedsRestart(currentPlant)
+                } else {
+                    _checkInState.value = CheckInState.Error("Plant data not found")
+                }
             } catch (e: DuplicateCheckInException) {
                 _checkInState.value = CheckInState.Error(e.message ?: "Already watered today")
                 Log.w("PlantDetailViewModel", "Duplicate Check-in: ${e.message}")
@@ -72,6 +81,19 @@ class PlantDetailViewModel(
             } catch (e: Exception) {
                 _checkInState.value = CheckInState.Error(e.message ?: "Revival failed")
             }
+        }
+    }
+
+    fun archivePlant(plantId: Long) {
+        viewModelScope.launch {
+            repository.archivePlant(plantId)
+        }
+    }
+
+    fun restartPlant(plantId: Long) {
+        viewModelScope.launch {
+            repository.restartPlant(plantId)
+            _checkInState.value = CheckInState.Idle
         }
     }
 
