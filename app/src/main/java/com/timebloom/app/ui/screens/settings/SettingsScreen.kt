@@ -53,7 +53,7 @@ import com.timebloom.app.ui.screens.garden.GardenViewModel
 @Composable
 fun SettingsScreen(
     onNavigateBack: () -> Unit,
-    gardenViewModel: GardenViewModel // Accept as parameter
+    gardenViewModel: GardenViewModel
 ) {
     val context = LocalContext.current
     val userPreferences = remember { UserPreferences(context) }
@@ -73,7 +73,6 @@ fun SettingsScreen(
     var showThemeDialog by remember { mutableStateOf(false) }
     var showGardenThemeDialog by remember { mutableStateOf(false) }
 
-    // Add to SettingsScreen
     val exportLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.CreateDocument("application/json")
     ) { uri ->
