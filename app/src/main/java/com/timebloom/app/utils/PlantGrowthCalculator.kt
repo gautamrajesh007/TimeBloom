@@ -11,6 +11,11 @@ import java.util.concurrent.TimeUnit
 
 object PlantGrowthCalculator {
 
+    companion object {
+        // Set the point of no return, e.g., 7 days of no check-ins
+        const val DEATH_GRACE_PERIOD_DAYS = 7L
+    }
+
     /**
      * Calculate the next growth stage based on total check-ins and difficulty
      */

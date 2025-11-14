@@ -43,5 +43,6 @@ enum class GrowthStage(val displayName: String, val emoji: String) {
     PLANT("Plant", "🪴"),
     FLOWER("Flower", "🌸"),
     FRUIT("Fruit", "🍎"),
-    WITHERING("Withering", "🥀")
+    WITHERING("Withering", "🥀"),
+    DEAD("Dead", "💀")
 }
