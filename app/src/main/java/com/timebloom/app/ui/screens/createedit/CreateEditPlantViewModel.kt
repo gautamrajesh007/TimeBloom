@@ -7,7 +7,6 @@ import com.timebloom.app.data.local.entity.Difficulty
 import com.timebloom.app.data.local.entity.Frequency
 import com.timebloom.app.data.local.entity.Plant
 import com.timebloom.app.data.repository.PlantRepository
-import com.timebloom.app.ui.viewmodel.PlantCreationUiState
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -28,9 +27,6 @@ class CreateEditPlantViewModel(
 
     private val _plant = MutableStateFlow<Plant?>(null)
     val plant: StateFlow<Plant?> = _plant.asStateFlow()
-
-    private val _uiState = MutableStateFlow<PlantCreationUiState>(PlantCreationUiState.Idle)
-    val uiState: StateFlow<PlantCreationUiState> = _uiState.asStateFlow()
 
     private val _saveState = MutableStateFlow<SavePlantState>(SavePlantState.Idle)
     val saveState: StateFlow<SavePlantState> = _saveState.asStateFlow()
