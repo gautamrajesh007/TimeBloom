@@ -9,11 +9,12 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
-import com.timebloom.app.data.local.AppDatabase // Import your AppDatabase
-import com.timebloom.app.data.repository.PlantRepository // Import your PlantRepository
+import com.timebloom.app.data.local.AppDatabase
+import com.timebloom.app.data.preferences.UserPreferences
+import com.timebloom.app.data.repository.PlantRepository
 import com.timebloom.app.ui.screens.createedit.CreateEditPlantScreen
 import com.timebloom.app.ui.screens.garden.GardenScreen
-import com.timebloom.app.ui.screens.garden.GardenViewModel // Import your GardenViewModel
+import com.timebloom.app.ui.screens.garden.GardenViewModel
 import com.timebloom.app.ui.screens.plantdetail.PlantDetailScreen
 import com.timebloom.app.ui.screens.settings.SettingsScreen
 import com.timebloom.app.ui.screens.statistics.StatisticsScreen
@@ -48,11 +49,16 @@ fun NavigationGraph() {
         )
     }
 
+    val userPreferences = remember { UserPreferences(context.applicationContext) }
     val gardenViewModel: GardenViewModel = viewModel(
         factory = object : androidx.lifecycle.ViewModelProvider.Factory {
             override fun <T : androidx.lifecycle.ViewModel> create(modelClass: Class<T>): T {
                 @Suppress("UNCHECKED_CAST")
-                return GardenViewModel(repository = repository, context = context) as T
+                return GardenViewModel(
+                    repository = repository,
+                    userPreferences = userPreferences,
+                    context = context
+                ) as T
             }
         }
     )
@@ -60,7 +66,7 @@ fun NavigationGraph() {
     NavHost(navController = navController, startDestination = Screen.Garden.route) {
         composable(Screen.Garden.route) {
             GardenScreen(
-                viewModel = gardenViewModel, // Pass the shared instance
+                viewModel = gardenViewModel,
                 onPlantClick = { plantId ->
                     navController.navigate(Screen.PlantDetail.createRoute(plantId))
                 },
@@ -103,7 +109,6 @@ fun NavigationGraph() {
                 defaultValue = -1L
             })
         ) { backStackEntry ->
-            // FIX: Retrieve and check for the default value
             val plantId = backStackEntry.arguments?.getLong("plantId")?.takeIf { it != -1L }
             CreateEditPlantScreen(
                 plantId = plantId,
@@ -120,7 +125,7 @@ fun NavigationGraph() {
         composable(Screen.Settings.route) {
             SettingsScreen(
                 onNavigateBack = { navController.popBackStack() },
-                gardenViewModel = gardenViewModel // Pass the shared instance
+                gardenViewModel = gardenViewModel
             )
         }
     }

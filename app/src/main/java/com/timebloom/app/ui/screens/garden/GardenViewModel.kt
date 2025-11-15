@@ -11,6 +11,7 @@ import androidx.work.WorkManager
 import com.timebloom.app.data.export.GardenExporter
 import com.timebloom.app.data.local.entity.Mood
 import com.timebloom.app.data.local.entity.Plant
+import com.timebloom.app.data.preferences.UserPreferences
 import com.timebloom.app.data.repository.DuplicateCheckInException // Import the specific exception
 import com.timebloom.app.data.repository.InsufficientRainDropsException
 import com.timebloom.app.data.repository.PlantIsDeadException
@@ -41,6 +42,7 @@ sealed class ExportState {
 
 class GardenViewModel(
     private val repository: PlantRepository,
+    private val userPreferences: UserPreferences,
     private val context: Context
 ) : ViewModel() {
 
@@ -52,6 +54,9 @@ class GardenViewModel(
 
     private val _checkInState = MutableStateFlow<CheckInState>(CheckInState.Idle)
     val checkInState: StateFlow<CheckInState> = _checkInState.asStateFlow()
+
+    val gardenTheme: StateFlow<String> = userPreferences.gardenTheme
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), "zen")
 
 
     fun checkInPlant(plantId: Long, note: String = "", mood: Mood = Mood.NEUTRAL) {

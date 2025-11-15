@@ -48,6 +48,9 @@ import com.timebloom.app.ui.components.PlantDeadDialog
 import com.timebloom.app.ui.components.RevivalDialog
 import com.timebloom.app.ui.components.SwipeablePlantCard
 import com.timebloom.app.utils.PlantGrowthCalculator
+// ADDED Imports
+import androidx.compose.foundation.background
+import androidx.compose.ui.graphics.Color
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -60,12 +63,10 @@ fun GardenScreen(
 ) {
     val context = LocalContext.current
 
-    // Create a launcher to request the notification permission
     val notificationPermissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestPermission(),
         onResult = { isGranted ->
             if (!isGranted) {
-                // You can show a toast or dialog explaining why the permission is needed
                 Toast.makeText(context, "Notifications are disabled", Toast.LENGTH_SHORT).show()
             }
         }
@@ -87,6 +88,7 @@ fun GardenScreen(
     }
 
     val plants by viewModel.plants.collectAsState()
+    val gardenTheme by viewModel.gardenTheme.collectAsState()
     var showCheckInDialog by remember { mutableStateOf<Long?>(null) }
     var showRevivalDialog by remember { mutableStateOf<Plant?>(null) }
     var showPlantDeadDialog by remember { mutableStateOf<Plant?>(null) }
@@ -129,6 +131,13 @@ fun GardenScreen(
         }
     }
 
+    val backgroundColor = when (gardenTheme) {
+        "tropical" -> Color(0xFFE0F7FA) // Light cyan
+        "desert" -> Color(0xFFFFF8E1) // Light sand
+        "zen" -> Color(0xFFF1F8E9)      // Light green
+        else -> MaterialTheme.colorScheme.background // Default
+    }
+
     Scaffold(
         topBar = {
             TopAppBar(
@@ -150,51 +159,56 @@ fun GardenScreen(
         }
     ) {
         padding ->
-        if (plants.isEmpty()) {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(padding),
-                contentAlignment = Alignment.Center
-            ) {
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text(
-                        text = "🌱",
-                        style = MaterialTheme.typography.displayLarge
-                    )
-                    Spacer(modifier = Modifier.height(16.dp))
-                    Text(
-                        text = "Your garden is empty",
-                        style = MaterialTheme.typography.titleLarge
-                    )
-                    Text(
-                        text = "Tap + to plant your first habit!",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(backgroundColor)
+                .padding(padding)
+        ) {
+            if (plants.isEmpty()) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize(),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Text(
+                            text = "🌱",
+                            style = MaterialTheme.typography.displayLarge
+                        )
+                        Spacer(modifier = Modifier.height(16.dp))
+                        Text(
+                            text = "Your garden is empty",
+                            style = MaterialTheme.typography.titleLarge
+                        )
+                        Text(
+                            text = "Tap + to plant your first habit!",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
                 }
-            }
-        } else {
-            LazyVerticalGrid(
-                columns = GridCells.Fixed(2),
-                contentPadding = PaddingValues(16.dp),
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp),
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(padding)
-            ) {
-                items(plants) { plant ->
-                    val isCheckInLoading = checkInState is CheckInState.Loading
-                    SwipeablePlantCard(
-                        plant = plant,
-                        onClick = { onPlantClick(plant.id) },
-                        onLongClick = { showCheckInDialog = plant.id },
-                        onArchive = { viewModel.archivePlant(plant.id) },
-                        onDelete = { viewModel.deletePlant(plant.id) }
-                    )
-                }
+            } else {
+                LazyVerticalGrid(
+                    columns = GridCells.Fixed(2),
+                    contentPadding = PaddingValues(16.dp),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp),
+                    modifier = Modifier
+                        .fillMaxSize()
+                ) {
+                    items(plants) { plant ->
+                        val isCheckInLoading = checkInState is CheckInState.Loading
+                        SwipeablePlantCard(
+                            plant = plant,
+                            onClick = { onPlantClick(plant.id) },
+                            onLongClick = { showCheckInDialog = plant.id },
+                            onArchive = { viewModel.archivePlant(plant.id) },
+                            onDelete = { viewModel.deletePlant(plant.id) }
+                        )
+                    }
 
+                }
             }
         }
     }
