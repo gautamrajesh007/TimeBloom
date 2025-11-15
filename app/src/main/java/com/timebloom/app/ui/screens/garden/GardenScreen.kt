@@ -50,6 +50,7 @@ import com.timebloom.app.ui.components.SwipeablePlantCard
 import com.timebloom.app.utils.PlantGrowthCalculator
 // ADDED Imports
 import androidx.compose.foundation.background
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.ui.graphics.Color
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -89,6 +90,7 @@ fun GardenScreen(
 
     val plants by viewModel.plants.collectAsState()
     val gardenTheme by viewModel.gardenTheme.collectAsState()
+    val themeMode by viewModel.themeMode.collectAsState()
     var showCheckInDialog by remember { mutableStateOf<Long?>(null) }
     var showRevivalDialog by remember { mutableStateOf<Plant?>(null) }
     var showPlantDeadDialog by remember { mutableStateOf<Plant?>(null) }
@@ -131,11 +133,21 @@ fun GardenScreen(
         }
     }
 
-    val backgroundColor = when (gardenTheme) {
-        "tropical" -> Color(0xFFE0F7FA) // Light cyan
-        "desert" -> Color(0xFFFFF8E1) // Light sand
-        "zen" -> Color(0xFFF1F8E9)      // Light green
-        else -> MaterialTheme.colorScheme.background // Default
+    val isDarkThemeActive = when (themeMode) {
+        "light" -> false
+        "dark" -> true
+        else -> isSystemInDarkTheme()
+    }
+
+    val backgroundColor = if (isDarkThemeActive) {
+        MaterialTheme.colorScheme.background
+    } else {
+        when (gardenTheme) {
+            "tropical" -> Color(0xFFE0F7FA) // Light cyan
+            "desert" -> Color(0xFFFFF8E1) // Light sand
+            "zen" -> Color(0xFFF1F8E9)      // Light green
+            else -> MaterialTheme.colorScheme.background // Default light background
+        }
     }
 
     Scaffold(

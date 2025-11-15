@@ -58,6 +58,9 @@ class GardenViewModel(
     val gardenTheme: StateFlow<String> = userPreferences.gardenTheme
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), "zen")
 
+    val themeMode: StateFlow<String> = userPreferences.themeMode
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), "auto")
+
 
     fun checkInPlant(plantId: Long, note: String = "", mood: Mood = Mood.NEUTRAL) {
         viewModelScope.launch {
