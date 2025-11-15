@@ -2,26 +2,24 @@ package com.timebloom.app.ui.screens.garden
 
 import android.content.Context
 import android.net.Uri
-import android.util.Log // Import Log for error logging
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import androidx.work.Data
-import androidx.work.OneTimeWorkRequestBuilder
-import androidx.work.WorkManager
 import com.timebloom.app.data.export.GardenExporter
 import com.timebloom.app.data.local.entity.Mood
 import com.timebloom.app.data.local.entity.Plant
 import com.timebloom.app.data.preferences.UserPreferences
-import com.timebloom.app.data.repository.DuplicateCheckInException // Import the specific exception
+import com.timebloom.app.data.repository.DuplicateCheckInException
 import com.timebloom.app.data.repository.InsufficientRainDropsException
 import com.timebloom.app.data.repository.PlantIsDeadException
 import com.timebloom.app.data.repository.PlantIsWitheringException
 import com.timebloom.app.data.repository.PlantRepository
-import com.timebloom.app.utils.PlantGrowthCalculator
-import com.timebloom.app.utils.ReminderWorker
-import kotlinx.coroutines.flow.*
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
-import java.util.concurrent.TimeUnit
 
 sealed class CheckInState {
     object Idle : CheckInState()

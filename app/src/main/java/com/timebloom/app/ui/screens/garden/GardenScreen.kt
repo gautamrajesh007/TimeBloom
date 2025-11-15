@@ -1,11 +1,14 @@
 package com.timebloom.app.ui.screens.garden
 
+// ADDED Imports
 import android.Manifest
 import android.content.pm.PackageManager
 import android.os.Build
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.background
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -38,20 +41,16 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
-import androidx.lifecycle.viewmodel.compose.viewModel
 import com.timebloom.app.data.local.entity.Plant
 import com.timebloom.app.ui.components.CheckInDialog
 import com.timebloom.app.ui.components.PlantDeadDialog
 import com.timebloom.app.ui.components.RevivalDialog
 import com.timebloom.app.ui.components.SwipeablePlantCard
 import com.timebloom.app.utils.PlantGrowthCalculator
-// ADDED Imports
-import androidx.compose.foundation.background
-import androidx.compose.foundation.isSystemInDarkTheme
-import androidx.compose.ui.graphics.Color
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable

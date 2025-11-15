@@ -45,7 +45,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.timebloom.app.data.local.AppDatabase
-import com.timebloom.app.data.local.entity.CheckIn
 import com.timebloom.app.data.local.entity.GrowthStage
 import com.timebloom.app.data.local.entity.Plant
 import com.timebloom.app.data.repository.PlantRepository
